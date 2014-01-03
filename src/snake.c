@@ -1,0 +1,651 @@
+// snake. (c) About.com 2011. AUthor D. Bolton
+// Version 1.0
+
+#include <time.h>
+#include "SDL.h"   /* All SDL App's need this */
+#include "SDL_image.h"
+#include <stdio.h>
+
+// #defines
+#define WIDTH 16
+#define HEIGHT 16
+#define NUMIMAGES 4
+
+#define PLBACKDROP 0
+#define PLTEXT 1
+#define PLSNAKE 2
+#define PLRAWBACKDROP 3
+#define MAXFRUITS 10
+#define GRHEIGHT 48
+#define GRWIDTH 48
+#define BLINKPERIOD 450
+
+#define SNEMPTY -1
+#define SNBODYH 0
+#define SNBODYV 1
+#define SNHEADWEST 2
+#define SNHEADNORTH 3
+#define SNHEADEAST 4
+#define SNHEADSOUTH 5
+#define SNTAILWEST 6
+#define SNTAILNORTH 7
+#define SNTAILEAST 8
+#define SNTAILSOUTH 9
+#define SNNORTHWEST 10
+#define SNNORTHEAST 11
+#define SNSOUTHEAST 12
+#define SNSOUTHWEST 13
+#define SNAPPLE 14
+#define SNSTRAWBERRY 15
+#define SNBANANA 16
+#define SNTRAP 17
+
+#define UPKEY SDLK_w /* see http://www.libsdl.org/docs/html/sdlkey.html for list */
+#define LEFTKEY SDLK_a
+#define RIGHTKEY SDLK_d
+#define DOWNKEY SDLK_s
+#define QUITKEY SDLK_ESCAPE
+#define TESTKEY SDLK_t
+#define TOGGLEFPS SDLK_f
+#define PAUSEKEY SDLK_p
+#define DEBUGKEY SDLK_TAB
+#define l(X,Y)(Y*WIDTH)+X
+
+typedef int block[WIDTH*HEIGHT];
+
+struct fruitortrap {
+	int countdown;
+	int loc;
+	int value; // SNAPPLE-SNTRAP
+};
+
+struct sprite {
+	int x,y;
+	SDL_Surface* image;
+	int countdown;
+	int vx,vy;
+};
+
+// /Global variables
+    const char * imagenames[NUMIMAGES]= {"res/backdrop.gif","res/text.gif","res/snake.gif","res/rawbackdrop.gif"};
+	const int headdir[4] = {3,4,5,2};
+	const int taildir[4] = {9,6,7,8};
+	const int curvedir[7] = {0,1,1,1,0,1,0};  /* total of 2 dirs */
+	SDL_Surface* planes[NUMIMAGES];
+    SDL_Surface* screen = NULL;
+	SDL_Event event;
+	SDL_Rect source,destination;
+
+    int gameRunning = 1;
+	int debug=0;
+	int speedtimer;
+	char keypressed;
+	int numImages,numSprites,atefood,score;
+	int framecount,fruittrapcount;
+
+	block shape,snake,dir;
+	int numsegs,tailindex,headindex,headloc,paused,pauseblink,blinktime;
+
+	struct fruitortrap fruits[MAXFRUITS];
+	struct sprite sprites[10];
+	int fps,tickcount,lasttick,lastfruittick;
+	char buffer[50];
+	int snakespeedticks,snakemoved,snakemovedir; // dir 0=N,1=E,2=S,3=W
+	int lastsnakemove,removefruitticks;
+	int showfps=0;
+	char gameovermsg[100];
+
+/* returns a number between 1 and max */
+int Random(int max) {
+	return (rand() % max) + 1;
+}
+
+/* Sets Window caption according to state - eg in debug mode or showing fps */
+void SetCaption() {
+  if (paused==1)
+	{
+		SDL_WM_SetCaption( "Snake Game is Paused", 0 );
+    }
+  else
+    if (showfps) {
+	    sprintf(buffer,"Snake GAme - fps %i",framecount);
+		SDL_WM_SetCaption( buffer, 0 );
+  }
+	else
+     SDL_WM_SetCaption( "Snake Game", 0 );
+}
+
+/* Initialize all snake variables */
+void InitSnake() {
+	int x,y;
+	numsegs=0;
+	tailindex=0;
+	headindex=1;
+	snakemoved=1;
+	atefood=0;
+	score=0;
+	lastsnakemove= SDL_GetTicks();
+	for (x=0;x<WIDTH;x++)
+		for (y=0;y<HEIGHT;y++)
+			shape[l(x,y)]= SNEMPTY;
+	memset(snake,sizeof(snake),0);
+	memset(dir,sizeof(dir),0);
+	memset(fruits,sizeof(fruits),0);
+	shape[120] = SNHEADNORTH;
+	snake[headindex] = 120;
+	snake[tailindex] = 120+WIDTH;
+	shape[120+WIDTH] = SNTAILSOUTH;
+	dir[snake[headindex]] = 0;
+}
+
+/* Loads all graphical images */
+void LoadAllImages() {
+	int i;
+	for ( i=0;i<NUMIMAGES;i++) {
+		planes[i] = IMG_Load(imagenames[i]);
+		if (!planes[i]) {
+			printf("Failed to load %s\n",imagenames[i]);
+			exit(-1);
+		}
+	}
+}
+
+/* Initialize all game, set screen mode, load images etc */
+void InitGame() {
+	srand((int)time(NULL));
+    SDL_Init( SDL_INIT_EVERYTHING );
+	screen = SDL_SetVideoMode(17*GRWIDTH,17*GRHEIGHT , 32, SDL_SWSURFACE | SDL_DOUBLEBUF  );
+	fruittrapcount=0;
+	paused=0;
+	showfps=0;
+	framecount=0;
+	snakemovedir=0;
+	snakespeedticks=750; // ms per move
+	lastfruittick = SDL_GetTicks();
+	removefruitticks= lastfruittick;
+	SetCaption();
+	LoadAllImages();
+	InitSnake();
+}
+
+/* Counts number of empty spaces on shape */
+int CountFreePlaces() {
+	int count=0;
+	int i=0;
+	for (i=0;i<HEIGHT*WIDTH;i++)
+		if (shape[i]==SNEMPTY)
+			count++;
+	return count;
+}
+
+/* print char at rect target */
+void printch(char c,SDL_Rect * target) {
+	SDL_Rect charblock;
+	int ok;
+	int start= (c-'0');
+	if (c!= ' ') {
+		charblock.h=21;
+		charblock.w=12;
+		charblock.x = start*12;
+		charblock.y = 0;
+		ok=SDL_BlitSurface(planes[PLTEXT],&charblock,screen,target);
+		if (ok==-1)
+		{
+			printf("error %s",SDL_GetError());
+		}
+	}
+	(*target).x+= 12;
+}
+
+/* print string text at x,y pixel coords */
+void print(int x,int y,char * text) {
+	int len=strlen(text);
+	int i;
+	SDL_Rect destr;
+	if (len==0)
+		return;
+	destr.h = 21;
+	destr.w = 12;
+	destr.x = x;
+	destr.y = y;
+	for (i=0;i<len;i++)
+		printch(text[i],&destr);
+}
+
+/* draws fruits on screen */
+void DrawFruits() {
+  int i,x,y,loc;
+  SDL_Rect destr,src;
+  int ok;
+  for (i=0;i<MAXFRUITS;i++) {
+	  if (fruits[i].countdown>0) {
+		  loc = fruits[i].loc;
+		  x= loc % WIDTH;
+		  y = (int)(loc/WIDTH);
+		  destr.w=GRWIDTH;
+		  destr.h=GRHEIGHT;
+		  destr.x = x*GRWIDTH;
+		  destr.y= y*GRHEIGHT;
+		  src.w=GRWIDTH;
+		  src.h=GRHEIGHT;
+		  src.y=0;
+		  src.x= fruits[i].value*GRWIDTH;
+		  ok=SDL_BlitSurface(planes[PLSNAKE],&src,screen,&destr);
+		  if (debug) {
+			  sprintf(buffer,"%i",fruits[i].countdown);
+			  print(destr.x+15,destr.y+6,buffer);
+		  }
+		  if (ok==-1)
+			{
+				printf("error %s",SDL_GetError());
+			}
+	  }
+  }
+}
+
+/* adds a random fruit or trap */
+void RandomFruitTrap() {
+
+	int i=0;
+	int floc=0;
+	int findex=-1;
+	int foundPlace=0;
+	int thing;
+	if (SDL_GetTicks()-lastfruittick < 15000)
+		return;
+    lastfruittick = SDL_GetTicks();
+	if (CountFreePlaces() <50)
+		return;
+
+	/* find a fruit slot */
+	for (i=0;i<MAXFRUITS;i++)
+		if (fruits[i].countdown==0) {
+			findex=i;
+			break;
+		}
+	if (findex==-1) /* no slots must be 10 out there */
+		return;
+
+	while (!foundPlace)
+	{
+		floc = Random(HEIGHT*WIDTH)-1; // 0..399
+		foundPlace = (shape[floc]==SNEMPTY);
+		if (foundPlace) { /* check no other fruit/trap there */
+		for (i=0;i<MAXFRUITS;i++)
+			if (i != findex && fruits[i].countdown>0 && fruits[i].loc==floc) {
+				{
+					foundPlace=0;
+				    break;
+				}
+			}
+		}
+	}
+	fruittrapcount++;
+	if (fruittrapcount==4){
+		fruittrapcount=0;
+		thing=SNTRAP;
+	  }
+	else
+		thing= Random(3)+SNAPPLE-1; /* 14..16 */
+
+	fruits[findex].countdown= (thing == SNTRAP) ? 60 : 30;
+	fruits[findex].loc = floc;
+	fruits[findex].value=thing;
+}
+
+/* called once per sec to check if fruits etc need removing when counted down to 0 */
+void RemoveFruits() {
+	int i;
+	if (SDL_GetTicks() - removefruitticks < 1000)
+		return;
+	removefruitticks = SDL_GetTicks();
+	for (i=0;i< MAXFRUITS;i++)
+	{
+		if (fruits[i].countdown >0)
+		{
+			fruits[i].countdown--;
+			if (fruits[i].countdown==0) {
+				fruits[i].loc =-1;
+				fruits[i].value=0;
+			}
+		}
+	}
+}
+
+/* When snake changes direction e.g. there are two paths so going north (0) then east (1) is graphic 12 while
+  heading east(1) then north (0) is graphic 10. This function determines the graphic to use
+
+  |->-   12      |    10
+  ^              ^
+  |           ->-|     */
+
+int getCurve(int d1,int d2) {
+	if ((d1==0 && d2==1) || (d1==3 && d2==2)) return 12;
+	if ((d1==0 && d2==3) || (d1==1 && d2==2)) return 13;
+	if ((d1==1 && d2==0) || (d1==2 && d2==3)) return 10;
+	if ((d1==2 && d2==1) || (d1==3 && d2==0)) return 11;
+	return -1; /* should never reach here*/
+}
+
+/* iterate through snake (ringbuffer), pick up graphics and render */
+void DrawSnake() {
+	SDL_Rect sngraph,target;
+	int ok;
+
+	int piece,i,dir1,dir2,curve,nextpieceloc,loc,x,y,headind;
+	if (!snakemoved || (paused && pauseblink))
+		return;
+
+	for (i = tailindex;i<=headindex;i++) {
+		loc= snake[i]; /* place on shape */
+		piece = shape[loc];
+		dir1 = dir[loc];
+		nextpieceloc=snake[i+1];
+		dir2 = dir[nextpieceloc];
+		if (i >tailindex && i < headindex) { /* work out curves on segments */
+		  curve = curvedir[dir1+dir2];
+		  if (i > tailindex && curve && (dir1 != dir2))
+			  {
+				  piece = getCurve(dir1,dir2);
+				  if (debug) {
+				    sprintf(buffer,"d1 =%i d2 = %i piece=%i",dir1,dir2,piece);
+				    print(250,50,buffer);
+				  }
+		      }
+		}
+		else /* changing direction tail take dir of segment ahead */
+		  if (i==tailindex) {
+  		    piece=taildir[dir2];
+	    }
+
+		x = loc % WIDTH; /* 0..15 */
+		y = (int)(loc/WIDTH);
+		target.h=GRHEIGHT;
+		target.w=GRWIDTH;
+		target.x= x*GRWIDTH;
+		target.y= y*GRHEIGHT;
+		sngraph.h=GRHEIGHT;
+		sngraph.w=GRWIDTH;
+		sngraph.x = piece*GRWIDTH;
+		sngraph.y = 0;
+		ok=SDL_BlitSurface(planes[PLSNAKE],&sngraph,screen,&target);
+		if (ok==-1)
+		{
+			printf("error %s",SDL_GetError());
+		}
+	}
+}
+
+/* shows direction array on screen if tab pressed */
+void DebugDir() {
+	int x,y,i;
+	char c;
+	buffer[1]='\0';
+	for (y=0;y<HEIGHT;y++) {
+		for (x=0;x<WIDTH;x++) {
+			c=(char)(dir[l(x,y)]+48);
+			buffer[0]=c;
+			buffer[1]='\0';
+			print(x*13+20,y*22+20,buffer);
+			sprintf(buffer,"%i",shape[l(x,y)]);
+			print(x*13+250,y*22+20,buffer);
+		}
+	}
+}
+
+void ShowScore() {
+  sprintf(buffer,"%i",score);
+  print(25,GRHEIGHT*15,buffer);
+}
+
+/* renders all graphics to buffer then flips it to screen */
+void RenderScreen() {
+	  SDL_BlitSurface( planes[PLBACKDROP], NULL, screen, NULL );
+	  if (debug)
+	    DebugDir();
+      DrawSnake();
+      RandomFruitTrap();
+	  DrawFruits();
+	  ShowScore();
+      SDL_Flip( screen );
+}
+
+/* Cleans up after game over */
+void FinishOff() {
+    //Free the loaded image
+	int i;
+    for (i=NUMIMAGES-1;i>0;i--)
+	{
+		SDL_FreeSurface( planes[i] );
+	}
+	SDL_FreeSurface( screen );
+    //Quit SDL
+    SDL_Quit();
+
+    exit(0);
+}
+
+/* Here is where food etc */
+void CheckForFruitOrTrap() {
+	int i,thingindex;
+	thingindex =-1;
+	for (i=0;i<MAXFRUITS;i++) {
+		if (fruits[i].countdown >0 && headloc== fruits[i].loc) {
+			{
+				thingindex=i;
+				fruits[i].countdown=0;
+				break;
+			}
+		}
+	}
+	if (thingindex!=-1)
+	{
+		if (fruits[i].value== SNTRAP) {
+			strcpy(gameovermsg,"Snake hit a trap.. Doh. Game Over");
+			gameRunning =0;
+		}
+		else
+        {
+		  atefood=1;
+		  score+= 50;
+		  snakespeedticks -= 15;
+		  if (snakespeedticks<100)
+			  snakespeedticks=100;
+	    }
+	}
+}
+
+/* Do actual snake move */
+void DoSnakeMove() {
+  int i;
+  int lastheadloc =  snake[headindex];
+  int lasttailindex= tailindex;
+  headindex++;
+  if (headindex>=WIDTH*HEIGHT)
+	 headindex=0;
+  if (atefood==0) { /* only move tail when not eating */
+	  tailindex++;
+	  if (tailindex>=WIDTH*HEIGHT)
+		  tailindex=0;
+	  dir[snake[lasttailindex]]=0;
+	  snake[lasttailindex] = SNEMPTY;
+	}
+	  else {
+		  numsegs++;	  /* add segment */
+		  atefood=0;
+	  }
+
+  if (shape[headloc] > SNEMPTY && shape[headloc] < SNAPPLE)
+  {
+	  for (i=tailindex;i<=headindex;i++)
+	  {
+		  if (snake[i]==headloc) {
+	        strcpy(gameovermsg,"Snake hit itself. Game Over");
+			gameRunning=0;
+			return;
+		  }
+	  }
+  }
+  snake[headindex]= headloc;
+  shape[headloc]= headdir[snakemovedir];
+  dir[headloc] = snakemovedir;
+  shape[snake[tailindex]]= taildir[dir[snake[tailindex]]];
+
+  if (numsegs >0) /* set graphic for segment after head */
+  {
+	  shape[lastheadloc] = 1-(dir[lastheadloc] & 1); /* n/s =0, e/w=1 */
+  }
+  CheckForFruitOrTrap();
+}
+
+/* Calculate how to move snake in direction */
+void MoveSnake() {
+ int currtime=	SDL_GetTicks();
+ headloc = snake[headindex];
+ if (currtime- lastsnakemove < snakespeedticks) /* not time to move */
+	 return;
+ lastsnakemove = currtime;
+ snakemoved=1;
+
+ switch (snakemovedir) {
+	 case 0: /*N*/{
+		 if (headloc < WIDTH)
+		 {
+			 strcpy(gameovermsg,"Snake hit the top edge. Game Over");
+			 gameRunning=0;
+			 return;
+		 }
+		 else
+			 headloc -=WIDTH;
+		 break;
+	 }
+	 case 1: /*E*/{
+		 if ((headloc % WIDTH)==WIDTH-1)
+		 {
+			 strcpy(gameovermsg,"Snake hit the right edge. Game Over");
+			 gameRunning=0;
+			 return;
+		 }
+		 else
+			 headloc ++;
+		 break;
+	 }
+	 case 2: /*S*/{
+		 if (headloc >= (HEIGHT-1)*WIDTH)
+		 {
+			 strcpy(gameovermsg,"Snake hit the bottom edge. Game Over");
+			 gameRunning=0;
+			 return;
+		 }
+		 else
+			 headloc += WIDTH;
+		 break;
+	 }
+	 case 3: /*W*/{
+		 if (headloc % WIDTH==0)
+		 {
+			 strcpy(gameovermsg,"Snake hit the left edge. Game Over");
+			 gameRunning=0;
+			 return;
+		 }
+		 else
+			 headloc--;
+		 break;
+	}
+ } /*switch */
+ DoSnakeMove();
+}
+
+/* Handle all key presses except esc */
+void ProcessKey() {
+
+	switch (keypressed) {
+	case LEFTKEY:
+		snakemovedir = 3;
+		break;
+	case UPKEY:
+		snakemovedir = 0;
+		break;
+	case RIGHTKEY:
+		snakemovedir = 1;
+		break;
+	case DOWNKEY:
+		snakemovedir = 2;
+		break;
+	case TESTKEY: /* use for testing conditions */
+		atefood=1;
+		break;
+	case PAUSEKEY: /* use to toggle pause */
+		paused=1-paused;
+		blinktime=SDL_GetTicks();
+		pauseblink=1;
+		SetCaption();
+		break;
+	case DEBUGKEY:
+		debug = 1-debug;
+		break;
+	case  TOGGLEFPS:
+		showfps = 1-showfps;
+		SetCaption();
+		keypressed=0;
+		break;
+	}
+}
+
+/* Main function with game loop */
+int main(int argc, char *argv[]) {
+	  InitGame();
+	  RenderScreen();
+
+	  while (gameRunning)
+	   {
+		  framecount++;
+		  tickcount = SDL_GetTicks();
+
+		  if (tickcount - lasttick >= 1000 && showfps) {
+				lasttick = tickcount;
+				SetCaption();
+				framecount =0;
+		  }
+		  if (paused && ((SDL_GetTicks()-blinktime)> BLINKPERIOD)) {
+			  pauseblink = 1-pauseblink;
+			  blinktime = SDL_GetTicks();
+		  }
+		  RenderScreen();
+		  RemoveFruits();
+		  while (SDL_PollEvent(&event)) {
+			switch (event.type) {
+				case SDL_KEYDOWN:
+				  keypressed = event.key.keysym.sym;
+				  printf("keypressed %d",keypressed);
+				  if (keypressed == QUITKEY)
+				  {
+				      strcpy(gameovermsg,"User hit the ESC Key");
+					  gameRunning=0;
+					  goto exitgame;
+				  }
+
+				  ProcessKey();
+					break;
+       	        case SDL_QUIT: /* if mouse clkck to close window */
+					{
+						gameRunning=0;
+						goto exitgame;
+						break;
+					}
+			} /* switch */
+		  } /* while SDL_PollEvent */
+		  if (paused==0)
+		    MoveSnake();
+	   } /* while (GameRunning) */
+	exitgame:
+
+	  if (gameovermsg) {
+	      SDL_BlitSurface( planes[PLRAWBACKDROP], NULL, screen, NULL );
+		  print(40,250,gameovermsg);
+          SDL_Flip( screen );
+		  SDL_Delay(2000);
+	  }
+	FinishOff();
+	return 0;
+}
