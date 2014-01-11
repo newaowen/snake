@@ -2,7 +2,8 @@ COMPILER=G++
 
 # todo: object files into output path, processing c / c++ files in the same time (?), nested directories for source files (?)
 C = c
-OUTPUT_PATH = out/production/snake/
+#OUTPUT_PATH = out/production/snake/
+OUTPUT_PATH = bin/
 SOURCE_PATH = src/
 EXE = $(OUTPUT_PATH)snake
 
@@ -21,7 +22,7 @@ ifeq ($(COMPILER), G++)
 # LIBS = -lgc
   LIBS =
 # LIBPATH = -L../gc/.libs
-  LIBPATH = -LSDL -lSDLmain -lSDL_image
+  LIBPATH = -LSDL -lSDLmain -lSDL_image -lSDL_gfx -lSDL_ttf
   CPPFLAGS = $(COPT) -g $(INCLUDES)
   LDFLAGS = $(LIBPATH) -g $(LIBS)
   DEP = dep

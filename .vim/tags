@@ -1,0 +1,102 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+C	/home/zhanqu/project/c/snake/Makefile	/^C = c$/;"	m
+CCMD	/home/zhanqu/project/c/snake/Makefile	/^  CCMD = cl$/;"	m
+CCMD	/home/zhanqu/project/c/snake/Makefile	/^  CCMD = g++$/;"	m
+COMPILER	/home/zhanqu/project/c/snake/Makefile	/^COMPILER=G++$/;"	m
+COPT	/home/zhanqu/project/c/snake/Makefile	/^  COPT = -O2$/;"	m
+COPT	/home/zhanqu/project/c/snake/Makefile	/^  COPT = \/O2$/;"	m
+CPPFLAGS	/home/zhanqu/project/c/snake/Makefile	/^  CPPFLAGS = $(COPT) -g $(INCLUDES)$/;"	m
+CPPFLAGS	/home/zhanqu/project/c/snake/Makefile	/^  CPPFLAGS = $(COPT) \/DEBUG $(INCLUDES)$/;"	m
+DEP	/home/zhanqu/project/c/snake/Makefile	/^  DEP = dep$/;"	m
+EXE	/home/zhanqu/project/c/snake/Makefile	/^EXE = $(OUTPUT_PATH)snake$/;"	m
+EXEFLAG	/home/zhanqu/project/c/snake/Makefile	/^  EXEFLAG = -o$/;"	m
+EXEFLAG	/home/zhanqu/project/c/snake/Makefile	/^  EXEFLAG = \/Fe$/;"	m
+HEIGHT	/home/zhanqu/project/c/snake/src/snake_new.c	/^int HEIGHT = 480;$/;"	v
+INCLUDES	/home/zhanqu/project/c/snake/Makefile	/^  INCLUDES = -I\/usr\/include\/SDL\/$/;"	m
+INCLUDES	/home/zhanqu/project/c/snake/Makefile	/^  INCLUDES =$/;"	m
+LDFLAGS	/home/zhanqu/project/c/snake/Makefile	/^  LDFLAGS = $(LIBPATH) -g $(LIBS)$/;"	m
+LDFLAGS	/home/zhanqu/project/c/snake/Makefile	/^  LDFLAGS = \/DEBUG$/;"	m
+LIBPATH	/home/zhanqu/project/c/snake/Makefile	/^  LIBPATH = -LSDL -lSDLmain -lSDL_image -lSDL_gfx -lSDL_ttf$/;"	m
+LIBS	/home/zhanqu/project/c/snake/Makefile	/^  LIBS =$/;"	m
+OBJ	/home/zhanqu/project/c/snake/Makefile	/^    OBJ = o$/;"	m
+OBJ	/home/zhanqu/project/c/snake/Makefile	/^    OBJ = obj$/;"	m
+OBJ	/home/zhanqu/project/c/snake/Makefile	/^  OBJ = obj$/;"	m
+OBJFLAG	/home/zhanqu/project/c/snake/Makefile	/^  OBJFLAG = -o$/;"	m
+OBJFLAG	/home/zhanqu/project/c/snake/Makefile	/^  OBJFLAG = \/Fo$/;"	m
+OBJS	/home/zhanqu/project/c/snake/Makefile	/^OBJS := $(patsubst %.$(C),%.$(OBJ),$(wildcard $(SOURCE_PATH)*.$(C)))$/;"	m
+OUTPUT_PATH	/home/zhanqu/project/c/snake/Makefile	/^OUTPUT_PATH = bin\/$/;"	m
+SDL_UTIL	/home/zhanqu/project/c/snake/src/sdl_util.h	2;"	d
+SOURCE_PATH	/home/zhanqu/project/c/snake/Makefile	/^SOURCE_PATH = src\/$/;"	m
+WIDTH	/home/zhanqu/project/c/snake/src/snake_new.c	/^int WIDTH = 700;$/;"	v
+__anon1::a	/home/zhanqu/project/c/snake/src/sdl_util.h	/^    Uint8 r, g, b, a;$/;"	m	struct:__anon1	access:public
+__anon1::b	/home/zhanqu/project/c/snake/src/sdl_util.h	/^    Uint8 r, g, b, a;$/;"	m	struct:__anon1	access:public
+__anon1::g	/home/zhanqu/project/c/snake/src/sdl_util.h	/^    Uint8 r, g, b, a;$/;"	m	struct:__anon1	access:public
+__anon1::r	/home/zhanqu/project/c/snake/src/sdl_util.h	/^    Uint8 r, g, b, a;$/;"	m	struct:__anon1	access:public
+a	/home/zhanqu/project/c/snake/src/sdl_util.h	/^    Uint8 r, g, b, a;$/;"	m	struct:__anon1	access:public
+b	/home/zhanqu/project/c/snake/src/sdl_util.h	/^    Uint8 r, g, b, a;$/;"	m	struct:__anon1	access:public
+board_height	/home/zhanqu/project/c/snake/src/snake_new.c	/^int board_width = 560, board_height = 480;$/;"	v
+board_width	/home/zhanqu/project/c/snake/src/snake_new.c	/^int board_width = 560, board_height = 480;$/;"	v
+box_size	/home/zhanqu/project/c/snake/src/snake_new.c	/^int box_size = 16;$/;"	v
+color_flash_vel	/home/zhanqu/project/c/snake/src/snake_new.c	/^float color_flash_vel = 0.008;$/;"	v
+color_green	/home/zhanqu/project/c/snake/src/snake_new.c	/^int color_green = 0x339933;$/;"	v
+column	/home/zhanqu/project/c/snake/src/snake_new.c	/^int column = board_width \/ box_size;$/;"	v
+create_snake_node	/home/zhanqu/project/c/snake/src/snake_new.c	/^snake_node* create_snake_node(int x, int y) {$/;"	f	signature:(int x, int y)
+draw_board	/home/zhanqu/project/c/snake/src/snake_new.c	/^void draw_board() {$/;"	f
+draw_hud	/home/zhanqu/project/c/snake/src/snake_new.c	/^void draw_hud() {$/;"	f
+draw_snake	/home/zhanqu/project/c/snake/src/snake_new.c	/^void draw_snake() {$/;"	f
+draw_target	/home/zhanqu/project/c/snake/src/snake_new.c	/^void draw_target() {$/;"	f
+draw_text	/home/zhanqu/project/c/snake/src/snake_new.c	/^void draw_text(char* s, int x, int y) {$/;"	f	signature:(char* s, int x, int y)
+font	/home/zhanqu/project/c/snake/src/snake_new.c	/^TTF_Font* font = NULL;$/;"	v
+g	/home/zhanqu/project/c/snake/src/sdl_util.h	/^    Uint8 r, g, b, a;$/;"	m	struct:__anon1	access:public
+game_init	/home/zhanqu/project/c/snake/src/snake_new.c	/^void game_init() { $/;"	f
+game_is_running	/home/zhanqu/project/c/snake/src/snake_new.c	/^bool game_is_running() {$/;"	f
+gen_target_pos	/home/zhanqu/project/c/snake/src/snake_new.c	/^void gen_target_pos() {$/;"	f
+insert_snake_head	/home/zhanqu/project/c/snake/src/snake_new.c	/^snake_node* insert_snake_head(int x, int y) {$/;"	f	signature:(int x, int y)
+is_running	/home/zhanqu/project/c/snake/src/snake_new.c	/^bool is_running = true;$/;"	v
+main	/home/zhanqu/project/c/snake/src/snake_new.c	/^int main(int argc, char *argv[]) {$/;"	f	signature:(int argc, char *argv[])
+move_snake	/home/zhanqu/project/c/snake/src/snake_new.c	/^void move_snake() {$/;"	f
+next	/home/zhanqu/project/c/snake/src/snake_new.c	/^    struct snake_node* next;$/;"	m	struct:snake_node	typeref:struct:snake_node::snake_node	file:	access:public
+prev	/home/zhanqu/project/c/snake/src/snake_new.c	/^    struct snake_node* prev;$/;"	m	struct:snake_node	typeref:struct:snake_node::snake_node	file:	access:public
+println	/home/zhanqu/project/c/snake/src/snake_new.c	/^void println(char* s) {$/;"	f	signature:(char* s)
+r	/home/zhanqu/project/c/snake/src/sdl_util.h	/^    Uint8 r, g, b, a;$/;"	m	struct:__anon1	access:public
+render_frame	/home/zhanqu/project/c/snake/src/snake_new.c	/^void render_frame(float tick) {$/;"	f	signature:(float tick)
+row	/home/zhanqu/project/c/snake/src/snake_new.c	/^int row = board_height \/ box_size;$/;"	v
+score	/home/zhanqu/project/c/snake/src/snake_new.c	/^int score = 0;$/;"	v
+score_str	/home/zhanqu/project/c/snake/src/snake_new.c	/^char score_str[50];$/;"	v
+screen	/home/zhanqu/project/c/snake/src/snake_new.c	/^SDL_Surface* screen = NULL;$/;"	v
+sdl_color	/home/zhanqu/project/c/snake/src/sdl_util.h	/^} sdl_color;$/;"	t	typeref:struct:__anon1
+sdl_draw_box	/home/zhanqu/project/c/snake/src/sdl_util.c	/^void sdl_draw_box(SDL_Surface* surface, int left, int top, int right, int bottom, int color) {$/;"	f	signature:(SDL_Surface* surface, int left, int top, int right, int bottom, int color)
+sdl_draw_line	/home/zhanqu/project/c/snake/src/sdl_util.c	/^void sdl_draw_line(SDL_Surface* surface, int x0, int y0, int x1, int y1, int color) {$/;"	f	signature:(SDL_Surface* surface, int x0, int y0, int x1, int y1, int color)
+sdl_draw_text	/home/zhanqu/project/c/snake/src/sdl_util.c	/^SDL_Surface* sdl_draw_text(TTF_Font* font, char* s, int color) {$/;"	f	signature:(TTF_Font* font, char* s, int color)
+sdl_event_loop	/home/zhanqu/project/c/snake/src/snake_new.c	/^void sdl_event_loop() {$/;"	f
+sdl_get_color	/home/zhanqu/project/c/snake/src/sdl_util.c	/^sdl_color sdl_get_color(int color) {$/;"	f	signature:(int color)
+sdl_handle_event	/home/zhanqu/project/c/snake/src/snake_new.c	/^void sdl_handle_event(SDL_Event* event) {$/;"	f	signature:(SDL_Event* event)
+sdl_handle_quit_event	/home/zhanqu/project/c/snake/src/snake_new.c	/^void sdl_handle_quit_event() {$/;"	f
+sdl_init	/home/zhanqu/project/c/snake/src/sdl_util.c	/^SDL_Surface* sdl_init(int width, int height) {$/;"	f	signature:(int width, int height)
+sdl_init_font	/home/zhanqu/project/c/snake/src/sdl_util.c	/^TTF_Font* sdl_init_font(char* font_name) {$/;"	f	signature:(char* font_name)
+sdl_set_title	/home/zhanqu/project/c/snake/src/sdl_util.c	/^void sdl_set_title(char* s) {$/;"	f	signature:(char* s)
+snake_color	/home/zhanqu/project/c/snake/src/snake_new.c	/^int snake_color[] = {0xffffff, 0x666666};$/;"	v
+snake_color_index	/home/zhanqu/project/c/snake/src/snake_new.c	/^float snake_color_index = 0;$/;"	v
+snake_eat	/home/zhanqu/project/c/snake/src/snake_new.c	/^void snake_eat() {$/;"	f
+snake_head	/home/zhanqu/project/c/snake/src/snake_new.c	/^snake_node* snake_head = NULL;$/;"	v
+snake_node	/home/zhanqu/project/c/snake/src/snake_new.c	/^struct snake_node {$/;"	s	file:
+snake_node::next	/home/zhanqu/project/c/snake/src/snake_new.c	/^    struct snake_node* next;$/;"	m	struct:snake_node	typeref:struct:snake_node::snake_node	file:	access:public
+snake_node::prev	/home/zhanqu/project/c/snake/src/snake_new.c	/^    struct snake_node* prev;$/;"	m	struct:snake_node	typeref:struct:snake_node::snake_node	file:	access:public
+snake_node::x	/home/zhanqu/project/c/snake/src/snake_new.c	/^    int x, y;$/;"	m	struct:snake_node	file:	access:public
+snake_node::y	/home/zhanqu/project/c/snake/src/snake_new.c	/^    int x, y;$/;"	m	struct:snake_node	file:	access:public
+snake_posx	/home/zhanqu/project/c/snake/src/snake_new.c	/^float snake_posx = column\/2, snake_posy = row\/2;$/;"	v
+snake_posy	/home/zhanqu/project/c/snake/src/snake_new.c	/^float snake_posx = column\/2, snake_posy = row\/2;$/;"	v
+snake_tail	/home/zhanqu/project/c/snake/src/snake_new.c	/^snake_node* snake_tail = NULL;$/;"	v
+snake_vel_count	/home/zhanqu/project/c/snake/src/snake_new.c	/^float snake_vel_count = 0;$/;"	v
+snake_vel_default	/home/zhanqu/project/c/snake/src/snake_new.c	/^float snake_vel_default = 0.015;$/;"	v
+snake_velx	/home/zhanqu/project/c/snake/src/snake_new.c	/^float snake_velx = 0, snake_vely = 0;$/;"	v
+snake_vely	/home/zhanqu/project/c/snake/src/snake_new.c	/^float snake_velx = 0, snake_vely = 0;$/;"	v
+target_posx	/home/zhanqu/project/c/snake/src/snake_new.c	/^int target_posx = -1, target_posy = -1;$/;"	v
+target_posy	/home/zhanqu/project/c/snake/src/snake_new.c	/^int target_posx = -1, target_posy = -1;$/;"	v
+x	/home/zhanqu/project/c/snake/src/snake_new.c	/^    int x, y;$/;"	m	struct:snake_node	file:	access:public
+y	/home/zhanqu/project/c/snake/src/snake_new.c	/^    int x, y;$/;"	m	struct:snake_node	file:	access:public
