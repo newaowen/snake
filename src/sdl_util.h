@@ -8,7 +8,6 @@
 
 extern SDL_Surface* sdl_init(int width, int height);
 
-
 extern TTF_Font* sdl_init_font(char* font_name);
 
 extern void sdl_set_title(char* s);

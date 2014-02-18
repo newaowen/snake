@@ -1,651 +1,403 @@
-// snake. (c) About.com 2011. AUthor D. Bolton
-// Version 1.0
-
 #include <time.h>
-#include "SDL.h"   /* All SDL App's need this */
-#include "SDL_image.h"
+#include "util.h"
+#include "sdl_util.h"   /* All SDL App's need this */
 #include <stdio.h>
 
-// #defines
-#define WIDTH 16
-#define HEIGHT 16
-#define NUMIMAGES 4
+#define DEFAULT_LIFE 3
 
-#define PLBACKDROP 0
-#define PLTEXT 1
-#define PLSNAKE 2
-#define PLRAWBACKDROP 3
-#define MAXFRUITS 10
-#define GRHEIGHT 48
-#define GRWIDTH 48
-#define BLINKPERIOD 450
+// 全局变量区域
+SDL_Surface* screen = NULL;
+TTF_Font* font = NULL;
 
-#define SNEMPTY -1
-#define SNBODYH 0
-#define SNBODYV 1
-#define SNHEADWEST 2
-#define SNHEADNORTH 3
-#define SNHEADEAST 4
-#define SNHEADSOUTH 5
-#define SNTAILWEST 6
-#define SNTAILNORTH 7
-#define SNTAILEAST 8
-#define SNTAILSOUTH 9
-#define SNNORTHWEST 10
-#define SNNORTHEAST 11
-#define SNSOUTHEAST 12
-#define SNSOUTHWEST 13
-#define SNAPPLE 14
-#define SNSTRAWBERRY 15
-#define SNBANANA 16
-#define SNTRAP 17
+// 正在运行的标记位
+int is_running = 1;
 
-#define UPKEY SDLK_w /* see http://www.libsdl.org/docs/html/sdlkey.html for list */
-#define LEFTKEY SDLK_a
-#define RIGHTKEY SDLK_d
-#define DOWNKEY SDLK_s
-#define QUITKEY SDLK_ESCAPE
-#define TESTKEY SDLK_t
-#define TOGGLEFPS SDLK_f
-#define PAUSEKEY SDLK_p
-#define DEBUGKEY SDLK_TAB
-#define l(X,Y)(Y*WIDTH)+X
+// 蛇颜色
+int snake_color[] = { 0xffffff, 0x666666 };
+int color_green = 0x339933;
+int head_color = 0xff0000;
+float color_flash_vel = 0.008;
+float snake_color_index = 0;
 
-typedef int block[WIDTH*HEIGHT];
+// 区域单元块像素大小
+int box_size = 16;
 
-struct fruitortrap {
-	int countdown;
-	int loc;
-	int value; // SNAPPLE-SNTRAP
-};
+// 窗口整体长高
+int WIDTH = 700;
+int HEIGHT = 480;
 
-struct sprite {
-	int x,y;
-	SDL_Surface* image;
-	int countdown;
-	int vx,vy;
-};
+// game区域长宽
+int board_width = 560, board_height = 480;
+// 块行列数
+int column = board_width / box_size;
+int row = board_height / box_size;
 
-// /Global variables
-    const char * imagenames[NUMIMAGES]= {"res/backdrop.gif","res/text.gif","res/snake.gif","res/rawbackdrop.gif"};
-	const int headdir[4] = {3,4,5,2};
-	const int taildir[4] = {9,6,7,8};
-	const int curvedir[7] = {0,1,1,1,0,1,0};  /* total of 2 dirs */
-	SDL_Surface* planes[NUMIMAGES];
-    SDL_Surface* screen = NULL;
-	SDL_Event event;
-	SDL_Rect source,destination;
+// snake初始位置
+float snake_posx = column / 2, snake_posy = row / 2;
+float snake_new_posx, snake_new_posy;
 
-    int gameRunning = 1;
-	int debug=0;
-	int speedtimer;
-	char keypressed;
-	int numImages,numSprites,atefood,score;
-	int framecount,fruittrapcount;
+// 蛇速度
+float snake_velx = 0, snake_vely = 0;
+float snake_vel_count = 0;
+// 速度参数
+float snake_vel_default = 0.008;
 
-	block shape,snake,dir;
-	int numsegs,tailindex,headindex,headloc,paused,pauseblink,blinktime;
+// 目标块位置
+int target_posx = -1, target_posy = -1;
+char score_str[50];
 
-	struct fruitortrap fruits[MAXFRUITS];
-	struct sprite sprites[10];
-	int fps,tickcount,lasttick,lastfruittick;
-	char buffer[50];
-	int snakespeedticks,snakemoved,snakemovedir; // dir 0=N,1=E,2=S,3=W
-	int lastsnakemove,removefruitticks;
-	int showfps=0;
-	char gameovermsg[100];
+// 重新开始标记
+int try_again = 0;
 
-/* returns a number between 1 and max */
-int Random(int max) {
-	return (rand() % max) + 1;
-}
+// snake节点
+// 非循环链表
+typedef struct snake_node {
+	int x, y;
+	struct snake_node* next;
+	struct snake_node* prev;
+} snake_node_t;
 
-/* Sets Window caption according to state - eg in debug mode or showing fps */
-void SetCaption() {
-  if (paused==1)
-	{
-		SDL_WM_SetCaption( "Snake Game is Paused", 0 );
-    }
-  else
-    if (showfps) {
-	    sprintf(buffer,"Snake GAme - fps %i",framecount);
-		SDL_WM_SetCaption( buffer, 0 );
-  }
-	else
-     SDL_WM_SetCaption( "Snake Game", 0 );
-}
+snake_node_t* snake_head = NULL;
+snake_node_t* snake_tail = NULL;
 
-/* Initialize all snake variables */
-void InitSnake() {
-	int x,y;
-	numsegs=0;
-	tailindex=0;
-	headindex=1;
-	snakemoved=1;
-	atefood=0;
-	score=0;
-	lastsnakemove= SDL_GetTicks();
-	for (x=0;x<WIDTH;x++)
-		for (y=0;y<HEIGHT;y++)
-			shape[l(x,y)]= SNEMPTY;
-	memset(snake,sizeof(snake),0);
-	memset(dir,sizeof(dir),0);
-	memset(fruits,sizeof(fruits),0);
-	shape[120] = SNHEADNORTH;
-	snake[headindex] = 120;
-	snake[tailindex] = 120+WIDTH;
-	shape[120+WIDTH] = SNTAILSOUTH;
-	dir[snake[headindex]] = 0;
-}
+int life = DEFAULT_LIFE;
+// 玩家得分
+int score = 0;
 
-/* Loads all graphical images */
-void LoadAllImages() {
-	int i;
-	for ( i=0;i<NUMIMAGES;i++) {
-		planes[i] = IMG_Load(imagenames[i]);
-		if (!planes[i]) {
-			printf("Failed to load %s\n",imagenames[i]);
-			exit(-1);
+// 生成目标位置点
+void gen_target_pos() {
+	int x = rand() % column;
+	int y = rand() % row;
+
+	// 判断是否与snake当前位置重复
+	int flag = 0;
+	snake_node_t* p = snake_head;
+	while (p != NULL) {
+		if (x == p->x && y == p->y) {
+			flag = 1;
+			break;
 		}
+		p = p->next;
 	}
+	if (flag) {
+		gen_target_pos();
+	} else {
+		target_posx = x;
+		target_posy = y;
+		printf("gen target pos: %d, %d\n", target_posx, target_posy);
+	}
+}
+
+// 创建蛇节点
+snake_node_t* snake_create_node(int x, int y) {
+	snake_node_t* p = (snake_node_t*) malloc(sizeof(snake_node_t));
+	if (p != NULL) {
+		p->x = x;
+		p->y = y;
+		p->next = NULL;
+		p->prev = NULL;
+	}
+	return p;
+}
+
+// 插入蛇头
+snake_node_t* snake_insert_head(int x, int y) {
+	snake_node_t* p = snake_create_node(x, y);
+	if (p != NULL) {
+		p->next = snake_head;
+		snake_head->prev = p;
+		snake_head = p;
+	}
+	return p;
+}
+
+// 初始化蛇头
+void snake_init_head() {
+	snake_head = snake_create_node(snake_posx, snake_posy);
+	snake_head->next = NULL;
+	snake_head->prev = NULL;
+}
+
+void snake_free() {
+	//释放原对象
+	snake_node_t* p = snake_head;
+	while (p != NULL) {
+		snake_node_t* t = p;
+		p = p->next;
+		p->prev = NULL;
+		free(p);
+	}
+	snake_init_head();
+}
+
+// 重置蛇
+void snake_reset() {
+	snake_free();
+	snake_init_head();
 }
 
 /* Initialize all game, set screen mode, load images etc */
-void InitGame() {
-	srand((int)time(NULL));
-    SDL_Init( SDL_INIT_EVERYTHING );
-	screen = SDL_SetVideoMode(17*GRWIDTH,17*GRHEIGHT , 32, SDL_SWSURFACE | SDL_DOUBLEBUF  );
-	fruittrapcount=0;
-	paused=0;
-	showfps=0;
-	framecount=0;
-	snakemovedir=0;
-	snakespeedticks=750; // ms per move
-	lastfruittick = SDL_GetTicks();
-	removefruitticks= lastfruittick;
-	SetCaption();
-	LoadAllImages();
-	InitSnake();
+void game_init() {
+	srand((int) time(NULL));
+	screen = sdl_init(WIDTH, HEIGHT);
+	font = sdl_init_font("res/FreeSans.ttf");
+	sdl_set_title("snake");
+	snake_init_head();
 }
 
-/* Counts number of empty spaces on shape */
-int CountFreePlaces() {
-	int count=0;
-	int i=0;
-	for (i=0;i<HEIGHT*WIDTH;i++)
-		if (shape[i]==SNEMPTY)
-			count++;
-	return count;
+int game_is_running() {
+	return is_running;
 }
 
-/* print char at rect target */
-void printch(char c,SDL_Rect * target) {
-	SDL_Rect charblock;
-	int ok;
-	int start= (c-'0');
-	if (c!= ' ') {
-		charblock.h=21;
-		charblock.w=12;
-		charblock.x = start*12;
-		charblock.y = 0;
-		ok=SDL_BlitSurface(planes[PLTEXT],&charblock,screen,target);
-		if (ok==-1)
-		{
-			printf("error %s",SDL_GetError());
-		}
+// 绘制右侧文本工具方法
+void draw_text(char* s, int x, int y) {
+	SDL_Surface* ts = sdl_draw_text(font, s, 0);
+	if (ts != NULL) {
+		SDL_Rect rect;
+		rect.x = x;
+		rect.y = y;
+		rect.w = 100;
+		rect.h = 80;
+		SDL_BlitSurface(ts, NULL, screen, &rect);
 	}
-	(*target).x+= 12;
 }
 
-/* print string text at x,y pixel coords */
-void print(int x,int y,char * text) {
-	int len=strlen(text);
-	int i;
-	SDL_Rect destr;
-	if (len==0)
-		return;
-	destr.h = 21;
-	destr.w = 12;
-	destr.x = x;
-	destr.y = y;
-	for (i=0;i<len;i++)
-		printch(text[i],&destr);
+// 绘制右侧文本
+void draw_hud() {
+	draw_text("level 1", board_width + 20, 50);
+	sprintf(score_str, "score: %d", score); // puts string into buffer
+	draw_text(score_str, board_width + 20, 120);
 }
 
-/* draws fruits on screen */
-void DrawFruits() {
-  int i,x,y,loc;
-  SDL_Rect destr,src;
-  int ok;
-  for (i=0;i<MAXFRUITS;i++) {
-	  if (fruits[i].countdown>0) {
-		  loc = fruits[i].loc;
-		  x= loc % WIDTH;
-		  y = (int)(loc/WIDTH);
-		  destr.w=GRWIDTH;
-		  destr.h=GRHEIGHT;
-		  destr.x = x*GRWIDTH;
-		  destr.y= y*GRHEIGHT;
-		  src.w=GRWIDTH;
-		  src.h=GRHEIGHT;
-		  src.y=0;
-		  src.x= fruits[i].value*GRWIDTH;
-		  ok=SDL_BlitSurface(planes[PLSNAKE],&src,screen,&destr);
-		  if (debug) {
-			  sprintf(buffer,"%i",fruits[i].countdown);
-			  print(destr.x+15,destr.y+6,buffer);
-		  }
-		  if (ok==-1)
-			{
-				printf("error %s",SDL_GetError());
-			}
-	  }
-  }
-}
-
-/* adds a random fruit or trap */
-void RandomFruitTrap() {
-
-	int i=0;
-	int floc=0;
-	int findex=-1;
-	int foundPlace=0;
-	int thing;
-	if (SDL_GetTicks()-lastfruittick < 15000)
-		return;
-    lastfruittick = SDL_GetTicks();
-	if (CountFreePlaces() <50)
-		return;
-
-	/* find a fruit slot */
-	for (i=0;i<MAXFRUITS;i++)
-		if (fruits[i].countdown==0) {
-			findex=i;
-			break;
-		}
-	if (findex==-1) /* no slots must be 10 out there */
-		return;
-
-	while (!foundPlace)
-	{
-		floc = Random(HEIGHT*WIDTH)-1; // 0..399
-		foundPlace = (shape[floc]==SNEMPTY);
-		if (foundPlace) { /* check no other fruit/trap there */
-		for (i=0;i<MAXFRUITS;i++)
-			if (i != findex && fruits[i].countdown>0 && fruits[i].loc==floc) {
-				{
-					foundPlace=0;
-				    break;
-				}
-			}
-		}
+// 绘制左侧游戏区域
+void draw_board() {
+	// draw横线
+	for (int i = 0; i <= row; i++) {
+		sdl_draw_line(screen, 0, i * box_size, board_width, i * box_size,
+				color_green);
 	}
-	fruittrapcount++;
-	if (fruittrapcount==4){
-		fruittrapcount=0;
-		thing=SNTRAP;
-	  }
-	else
-		thing= Random(3)+SNAPPLE-1; /* 14..16 */
-
-	fruits[findex].countdown= (thing == SNTRAP) ? 60 : 30;
-	fruits[findex].loc = floc;
-	fruits[findex].value=thing;
+	// draw竖线
+	for (int i = 0; i <= column; i++) {
+		sdl_draw_line(screen, i * box_size, 0, i * box_size, board_height,
+				color_green);
+	}
 }
 
-/* called once per sec to check if fruits etc need removing when counted down to 0 */
-void RemoveFruits() {
-	int i;
-	if (SDL_GetTicks() - removefruitticks < 1000)
-		return;
-	removefruitticks = SDL_GetTicks();
-	for (i=0;i< MAXFRUITS;i++)
-	{
-		if (fruits[i].countdown >0)
-		{
-			fruits[i].countdown--;
-			if (fruits[i].countdown==0) {
-				fruits[i].loc =-1;
-				fruits[i].value=0;
-			}
+/** 
+ * 吃到
+ */
+void snake_eat_target() {
+	target_posx = -1;
+	target_posy = -1;
+	score += 10;
+}
+
+// 尝试移动snake, 并进行碰撞检测
+int snake_try_move() {
+	// 速度控制
+	snake_vel_count += snake_vel_default;
+	if (snake_vel_count < 1) {
+		return 0;
+	}
+	snake_vel_count = 0;
+
+	snake_new_posy = snake_head->y + snake_vely;
+	snake_new_posx = snake_head->x + snake_velx;
+
+	return 1;
+}
+
+int collision_test() {
+	snake_node_t* p = snake_head;
+	int x = p->x;
+	int y = p->y;
+
+	//边界碰撞
+	if (snake_new_posy < 0 || snake_new_posy >= row || snake_new_posx < 0
+			|| snake_new_posx >= column) {
+		return 1;
+	}
+
+	return 0;
+}
+
+// 真正移动蛇
+void snake_move(int x, int y) {
+	// 判断新位置是否触发snake位置变动
+	snake_node_t* old_head = snake_head;
+	snake_insert_head(x, y);
+	if (old_head->next == NULL) {
+		snake_tail = old_head;
+	}
+
+	if (target_posx == x && target_posy == y) {
+		snake_eat_target();
+	} else {
+		// snake自动运动
+		// 去掉尾部
+		if (snake_tail != NULL) {
+			snake_node_t* t = snake_tail->prev;
+			t->next = NULL;
+			free(snake_tail);
+			snake_tail = t;
 		}
 	}
 }
 
-/* When snake changes direction e.g. there are two paths so going north (0) then east (1) is graphic 12 while
-  heading east(1) then north (0) is graphic 10. This function determines the graphic to use
+void draw_snake() {
+	float color_index = 0;
 
-  |->-   12      |    10
-  ^              ^
-  |           ->-|     */
+	// 绘制snake list
+	snake_node_t* p = snake_head;
+	// 绘制蛇头
+	int x = p->x;
+	int y = p->y;
+	sdl_draw_box(screen, x * box_size + 1, y * box_size + 1,
+			(x + 1) * box_size - 1, (y + 1) * box_size - 1, head_color);
 
-int getCurve(int d1,int d2) {
-	if ((d1==0 && d2==1) || (d1==3 && d2==2)) return 12;
-	if ((d1==0 && d2==3) || (d1==1 && d2==2)) return 13;
-	if ((d1==1 && d2==0) || (d1==2 && d2==3)) return 10;
-	if ((d1==2 && d2==1) || (d1==3 && d2==0)) return 11;
-	return -1; /* should never reach here*/
-}
-
-/* iterate through snake (ringbuffer), pick up graphics and render */
-void DrawSnake() {
-	SDL_Rect sngraph,target;
-	int ok;
-
-	int piece,i,dir1,dir2,curve,nextpieceloc,loc,x,y,headind;
-	if (!snakemoved || (paused && pauseblink))
-		return;
-
-	for (i = tailindex;i<=headindex;i++) {
-		loc= snake[i]; /* place on shape */
-		piece = shape[loc];
-		dir1 = dir[loc];
-		nextpieceloc=snake[i+1];
-		dir2 = dir[nextpieceloc];
-		if (i >tailindex && i < headindex) { /* work out curves on segments */
-		  curve = curvedir[dir1+dir2];
-		  if (i > tailindex && curve && (dir1 != dir2))
-			  {
-				  piece = getCurve(dir1,dir2);
-				  if (debug) {
-				    sprintf(buffer,"d1 =%i d2 = %i piece=%i",dir1,dir2,piece);
-				    print(250,50,buffer);
-				  }
-		      }
-		}
-		else /* changing direction tail take dir of segment ahead */
-		  if (i==tailindex) {
-  		    piece=taildir[dir2];
-	    }
-
-		x = loc % WIDTH; /* 0..15 */
-		y = (int)(loc/WIDTH);
-		target.h=GRHEIGHT;
-		target.w=GRWIDTH;
-		target.x= x*GRWIDTH;
-		target.y= y*GRHEIGHT;
-		sngraph.h=GRHEIGHT;
-		sngraph.w=GRWIDTH;
-		sngraph.x = piece*GRWIDTH;
-		sngraph.y = 0;
-		ok=SDL_BlitSurface(planes[PLSNAKE],&sngraph,screen,&target);
-		if (ok==-1)
-		{
-			printf("error %s",SDL_GetError());
-		}
+	// 绘制蛇身体
+	p = p->next;
+	while (p != NULL) {
+		// fill rectangle
+		int x = p->x;
+		int y = p->y;
+		//printf("draw snake: %d,%d\n", x, y);
+		sdl_draw_box(screen, x * box_size + 1, y * box_size + 1,
+				(x + 1) * box_size - 1, (y + 1) * box_size - 1,
+				snake_color[(int) color_index]);
+		p = p->next;
 	}
 }
 
-/* shows direction array on screen if tab pressed */
-void DebugDir() {
-	int x,y,i;
-	char c;
-	buffer[1]='\0';
-	for (y=0;y<HEIGHT;y++) {
-		for (x=0;x<WIDTH;x++) {
-			c=(char)(dir[l(x,y)]+48);
-			buffer[0]=c;
-			buffer[1]='\0';
-			print(x*13+20,y*22+20,buffer);
-			sprintf(buffer,"%i",shape[l(x,y)]);
-			print(x*13+250,y*22+20,buffer);
+void draw_target() {
+	int x = target_posx;
+	int y = target_posy;
+	if (x >= 0 && y >= 0) {
+		float color_index = 0;
+		snake_color_index += color_flash_vel;
+		if (snake_color_index >= sizeof(snake_color) / sizeof(snake_color[0])) {
+			snake_color_index = 0;
 		}
+		color_index = snake_color_index;
+		sdl_draw_box(screen, x * box_size + 1, y * box_size + 1,
+				(x + 1) * box_size - 1, (y + 1) * box_size - 1,
+				snake_color[(int) color_index]);
+	} else {
+		gen_target_pos();
 	}
 }
 
-void ShowScore() {
-  sprintf(buffer,"%i",score);
-  print(25,GRHEIGHT*15,buffer);
-}
+void sdl_handle_event(SDL_Event* event) {
+	char keypressed;
+	switch (event->type) {
+	case SDL_KEYDOWN:
+		keypressed = event->key.keysym.sym;
+		//printf("keypressed:%c\n", keypressed);
+		if (keypressed == SDLK_UP || keypressed == SDLK_w) {
+			printf("up keypressed:%c\n", keypressed);
+			snake_vely = -1; //-snake_vel_default;
+			snake_velx = 0;
+		} else if (keypressed == SDLK_DOWN || keypressed == SDLK_s) {
+			snake_vely = 1; //snake_vel_default;
+			snake_velx = 0;
+		} else if (keypressed == SDLK_LEFT || keypressed == SDLK_a) {
+			snake_velx = -1; //-snake_vel_default;
+			snake_vely = 0;
+		} else if (keypressed == SDLK_RIGHT || keypressed == SDLK_d) {
+			snake_velx = 1; //snake_vel_default;
+			snake_vely = 0;
+		}
+		break;
 
-/* renders all graphics to buffer then flips it to screen */
-void RenderScreen() {
-	  SDL_BlitSurface( planes[PLBACKDROP], NULL, screen, NULL );
-	  if (debug)
-	    DebugDir();
-      DrawSnake();
-      RandomFruitTrap();
-	  DrawFruits();
-	  ShowScore();
-      SDL_Flip( screen );
-}
-
-/* Cleans up after game over */
-void FinishOff() {
-    //Free the loaded image
-	int i;
-    for (i=NUMIMAGES-1;i>0;i--)
-	{
-		SDL_FreeSurface( planes[i] );
+		/*
+		 case SDL_KEYUP:
+		 keypressed = event->key.keysym.sym;
+		 if (keypressed == SDLK_UP || keypressed == SDLK_w) {
+		 snake_vely = 0;
+		 } else if (keypressed == SDLK_DOWN || keypressed == SDLK_s) {
+		 snake_vely = 0;
+		 } else if (keypressed == SDLK_LEFT || keypressed == SDLK_a) {
+		 snake_velx = 0;
+		 } else if (keypressed == SDLK_RIGHT || keypressed == SDLK_d) {
+		 snake_velx = 0;
+		 }
+		 break;
+		 */
 	}
-	SDL_FreeSurface( screen );
-    //Quit SDL
-    SDL_Quit();
-
-    exit(0);
 }
 
-/* Here is where food etc */
-void CheckForFruitOrTrap() {
-	int i,thingindex;
-	thingindex =-1;
-	for (i=0;i<MAXFRUITS;i++) {
-		if (fruits[i].countdown >0 && headloc== fruits[i].loc) {
-			{
-				thingindex=i;
-				fruits[i].countdown=0;
-				break;
+void sdl_handle_quit_event() {
+	is_running = 0;
+}
+
+void render_frame(float tick) {
+	// clear
+	SDL_FillRect(screen, NULL, 0x000000);
+
+	draw_board();
+
+	draw_target();
+
+	draw_snake();
+
+	draw_hud();
+
+	SDL_Flip(screen);
+}
+
+void move_logic() {
+	int flag = snake_try_move();
+	if (flag) {
+		if (collision_test()) { //碰撞检测
+			// 发生碰撞，死命逻辑
+			life--;
+			// 如果生命已使用完，则game over进入欢迎界面
+			if (life > 0) {
+				snake_reset();
+				// 重新生成点
+				gen_target_pos();
+			} else {
+				// game over
+
 			}
 		}
+
+		// snake自动运动
+		snake_move(snake_new_posx, snake_new_posy);
 	}
-	if (thingindex!=-1)
-	{
-		if (fruits[i].value== SNTRAP) {
-			strcpy(gameovermsg,"Snake hit a trap.. Doh. Game Over");
-			gameRunning =0;
+}
+
+void sdl_event_loop() {
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+		// 退出处理(关闭窗口和ESC键)
+		if (event.type == SDL_QUIT
+				|| (event.type == SDL_KEYDOWN
+						&& event.key.keysym.sym == SDLK_ESCAPE)) {
+			sdl_handle_quit_event();
+		} else {
+			sdl_handle_event(&event);
 		}
-		else
-        {
-		  atefood=1;
-		  score+= 50;
-		  snakespeedticks -= 15;
-		  if (snakespeedticks<100)
-			  snakespeedticks=100;
-	    }
 	}
 }
 
-/* Do actual snake move */
-void DoSnakeMove() {
-  int i;
-  int lastheadloc =  snake[headindex];
-  int lasttailindex= tailindex;
-  headindex++;
-  if (headindex>=WIDTH*HEIGHT)
-	 headindex=0;
-  if (atefood==0) { /* only move tail when not eating */
-	  tailindex++;
-	  if (tailindex>=WIDTH*HEIGHT)
-		  tailindex=0;
-	  dir[snake[lasttailindex]]=0;
-	  snake[lasttailindex] = SNEMPTY;
-	}
-	  else {
-		  numsegs++;	  /* add segment */
-		  atefood=0;
-	  }
+// 游戏结束提示
+void render_game_over() {
 
-  if (shape[headloc] > SNEMPTY && shape[headloc] < SNAPPLE)
-  {
-	  for (i=tailindex;i<=headindex;i++)
-	  {
-		  if (snake[i]==headloc) {
-	        strcpy(gameovermsg,"Snake hit itself. Game Over");
-			gameRunning=0;
-			return;
-		  }
-	  }
-  }
-  snake[headindex]= headloc;
-  shape[headloc]= headdir[snakemovedir];
-  dir[headloc] = snakemovedir;
-  shape[snake[tailindex]]= taildir[dir[snake[tailindex]]];
-
-  if (numsegs >0) /* set graphic for segment after head */
-  {
-	  shape[lastheadloc] = 1-(dir[lastheadloc] & 1); /* n/s =0, e/w=1 */
-  }
-  CheckForFruitOrTrap();
-}
-
-/* Calculate how to move snake in direction */
-void MoveSnake() {
- int currtime=	SDL_GetTicks();
- headloc = snake[headindex];
- if (currtime- lastsnakemove < snakespeedticks) /* not time to move */
-	 return;
- lastsnakemove = currtime;
- snakemoved=1;
-
- switch (snakemovedir) {
-	 case 0: /*N*/{
-		 if (headloc < WIDTH)
-		 {
-			 strcpy(gameovermsg,"Snake hit the top edge. Game Over");
-			 gameRunning=0;
-			 return;
-		 }
-		 else
-			 headloc -=WIDTH;
-		 break;
-	 }
-	 case 1: /*E*/{
-		 if ((headloc % WIDTH)==WIDTH-1)
-		 {
-			 strcpy(gameovermsg,"Snake hit the right edge. Game Over");
-			 gameRunning=0;
-			 return;
-		 }
-		 else
-			 headloc ++;
-		 break;
-	 }
-	 case 2: /*S*/{
-		 if (headloc >= (HEIGHT-1)*WIDTH)
-		 {
-			 strcpy(gameovermsg,"Snake hit the bottom edge. Game Over");
-			 gameRunning=0;
-			 return;
-		 }
-		 else
-			 headloc += WIDTH;
-		 break;
-	 }
-	 case 3: /*W*/{
-		 if (headloc % WIDTH==0)
-		 {
-			 strcpy(gameovermsg,"Snake hit the left edge. Game Over");
-			 gameRunning=0;
-			 return;
-		 }
-		 else
-			 headloc--;
-		 break;
-	}
- } /*switch */
- DoSnakeMove();
-}
-
-/* Handle all key presses except esc */
-void ProcessKey() {
-
-	switch (keypressed) {
-	case LEFTKEY:
-		snakemovedir = 3;
-		break;
-	case UPKEY:
-		snakemovedir = 0;
-		break;
-	case RIGHTKEY:
-		snakemovedir = 1;
-		break;
-	case DOWNKEY:
-		snakemovedir = 2;
-		break;
-	case TESTKEY: /* use for testing conditions */
-		atefood=1;
-		break;
-	case PAUSEKEY: /* use to toggle pause */
-		paused=1-paused;
-		blinktime=SDL_GetTicks();
-		pauseblink=1;
-		SetCaption();
-		break;
-	case DEBUGKEY:
-		debug = 1-debug;
-		break;
-	case  TOGGLEFPS:
-		showfps = 1-showfps;
-		SetCaption();
-		keypressed=0;
-		break;
-	}
 }
 
 /* Main function with game loop */
 int main(int argc, char *argv[]) {
-	  InitGame();
-	  RenderScreen();
+	game_init();
 
-	  while (gameRunning)
-	   {
-		  framecount++;
-		  tickcount = SDL_GetTicks();
-
-		  if (tickcount - lasttick >= 1000 && showfps) {
-				lasttick = tickcount;
-				SetCaption();
-				framecount =0;
-		  }
-		  if (paused && ((SDL_GetTicks()-blinktime)> BLINKPERIOD)) {
-			  pauseblink = 1-pauseblink;
-			  blinktime = SDL_GetTicks();
-		  }
-		  RenderScreen();
-		  RemoveFruits();
-		  while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-				case SDL_KEYDOWN:
-				  keypressed = event.key.keysym.sym;
-				  printf("keypressed %d",keypressed);
-				  if (keypressed == QUITKEY)
-				  {
-				      strcpy(gameovermsg,"User hit the ESC Key");
-					  gameRunning=0;
-					  goto exitgame;
-				  }
-
-				  ProcessKey();
-					break;
-       	        case SDL_QUIT: /* if mouse clkck to close window */
-					{
-						gameRunning=0;
-						goto exitgame;
-						break;
-					}
-			} /* switch */
-		  } /* while SDL_PollEvent */
-		  if (paused==0)
-		    MoveSnake();
-	   } /* while (GameRunning) */
-	exitgame:
-
-	  if (gameovermsg) {
-	      SDL_BlitSurface( planes[PLRAWBACKDROP], NULL, screen, NULL );
-		  print(40,250,gameovermsg);
-          SDL_Flip( screen );
-		  SDL_Delay(2000);
-	  }
-	FinishOff();
-	return 0;
+	float tick = 0.0f;
+	// loop
+	while (game_is_running()) {
+		tick = SDL_GetTicks();
+		// game逻辑
+		move_logic();
+		render_frame(tick);
+		sdl_event_loop();
+	}
+	//render_game_over();
 }

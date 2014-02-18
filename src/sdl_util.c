@@ -47,10 +47,10 @@ SDL_Surface* sdl_draw_text(TTF_Font* font, char* s, int color) {
 
 sdl_color sdl_get_color(int color) {
 	sdl_color c;
-	c.r = (color & 0xff000000) >> 24;
-    c.g = (color & 0x00ff0000) >> 16; 
-    c.b = (color & 0x0000ff00) >> 8; 
-    c.a = (color & 0x000000ff); 
+	c.a = 255 - ((color & 0xff000000) >> 24);
+    c.r = (color & 0x00ff0000) >> 16; 
+    c.g = (color & 0x0000ff00) >> 8; 
+    c.b = (color & 0x000000ff); 
 	return c;
 }
 

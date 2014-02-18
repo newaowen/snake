@@ -40,14 +40,19 @@ else
   LDFLAGS = /DEBUG
 endif
 
-OBJS := $(patsubst %.$(C),%.$(OBJ),$(wildcard $(SOURCE_PATH)*.$(C)))
+#OBJ = $(addprefix $(OBJDIR)/, $(patsubst %.cpp, %.o, $(wildcard *.cpp)))
+#remove source path c to source path.o
+#and source path.o -> out path.o
+#OBJS := $(patsubst %.$(C),%.$(OBJ),$(wildcard $(SOURCE_PATH)*.$(C)))
+OBJS := $(subst $(SOURCE_PATH), $(OUTPUT_PATH), $(patsubst %.$(C),%.$(OBJ),$(wildcard $(SOURCE_PATH)*.$(C))))
 
-%.$(OBJ):%.$(C)
+#compile obj rule, attention middle path is not same 
+$(OUTPUT_PATH)/%.$(OBJ): $(SOURCE_PATH)/%.$(C)
 	@echo Compiling $(basename $<)...
-	$(CCMD) -c $(CPPFLAGS) $(CXXFLAGS) $< $(OBJFLAG)$@
+	$(CCMD) -c $(CPPFLAGS) $(CXXFLAGS) $< $(OBJFLAG) $@
 
 all: $(OBJS)
-	@echo Linking...
+	@echo Linking $^
 	$(CCMD) $(LDFLAGS) $^ $(LIBS) $(EXEFLAG) $(EXE)
 
 clean:
